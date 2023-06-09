@@ -12,6 +12,8 @@ typedef struct {
     int* output;
     int threadId;
     int numThreads;
+    int startRow;
+    int numRows;
 } WorkerArgs;
 
 
@@ -34,8 +36,18 @@ void workerThreadStart(WorkerArgs * const args) {
     // to compute a part of the output image.  For example, in a
     // program that uses two threads, thread 0 could compute the top
     // half of the image and thread 1 could compute the bottom half.
+    double startTime = CycleTimer::currentSeconds();
 
-    printf("Hello world from thread %d\n", args->threadId);
+    mandelbrotSerial(args->x0,args->y0,args->x1,args->y1,
+    args->width,args->height,
+    args->startRow,args->numRows,
+    args->maxIterations,
+    args->output);
+
+    //printf("Hello world from thread %d\n", args->threadId);
+    double endTime = CycleTimer::currentSeconds();
+    double minSerial=endTime-startTime;
+    printf("[mandelbrot work thread %d]:\t\t[%.3f] ms\n", args->threadId,minSerial * 1000);
 }
 
 //
@@ -50,6 +62,7 @@ void mandelbrotThread(
     int maxIterations, int output[])
 {
     static constexpr int MAX_THREADS = 32;
+    int step=height/numThreads;
 
     if (numThreads > MAX_THREADS)
     {
@@ -77,6 +90,8 @@ void mandelbrotThread(
         args[i].output = output;
       
         args[i].threadId = i;
+        args[i].startRow=i*step;
+        args[i].numRows= (i==numThreads-1?height-i*step:step);
     }
 
     // Spawn the worker threads.  Note that only numThreads-1 std::threads
